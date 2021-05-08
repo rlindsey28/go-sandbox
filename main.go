@@ -25,8 +25,8 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, "I'm running %s a container!\n", inContainer)
 
 	log.Printf("Response status: %v", responseStatus)
-
 }
+
 func main() {
 	log.Println("Starting listener...")
 

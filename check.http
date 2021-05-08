@@ -1,1 +1,1 @@
-GET http://localhost:38000
+GET http://localhost:38000/getInfo
