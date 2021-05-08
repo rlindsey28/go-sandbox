@@ -28,7 +28,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func main() {
-	log.Println("Starting listener")
+	log.Println("Starting listener...")
 
 	http.HandleFunc("/getInfo", homeHandler)
 	err := http.ListenAndServe(":38000", nil)
