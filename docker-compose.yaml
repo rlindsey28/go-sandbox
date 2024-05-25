@@ -1,0 +1,7 @@
+services:
+  pub-service:
+    build:
+      context: ./pub-service # Needed as the Dockerfile is in a nested directory
+      dockerfile: ./Dockerfile
+    ports:
+      - 8080:8080 # Map the container port to the host port
