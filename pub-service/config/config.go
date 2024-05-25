@@ -14,12 +14,12 @@ type AppConfig struct {
 	}
 }
 
-//go:embed app-config.yaml
+//go:embed app-config.yml
 var content embed.FS
 
 func Initialize() *AppConfig {
 	appConfig := &AppConfig{}
-	file, err := content.ReadFile("app-config.yaml")
+	file, err := content.ReadFile("app-config.yml")
 	if err != nil {
 		log.Fatalf("failed to open config file: %v", err)
 	}
