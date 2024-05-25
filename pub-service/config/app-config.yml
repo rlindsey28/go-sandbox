@@ -1,3 +1,0 @@
-service:
-  service-name: "pub-service"
-  port: ":8080"

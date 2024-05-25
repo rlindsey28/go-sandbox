@@ -12,3 +12,23 @@ services:
       - OTEL_SERVICE_NAME=pub-service
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_SERVICE_NAMESPACE=go-sandbox
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.101.0
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./config/otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4317:4317" # OTLP over gRPC receiver
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    ports:
+      - 16686:16686
