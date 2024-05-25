@@ -5,3 +5,10 @@ services:
       dockerfile: ./Dockerfile
     ports:
       - 8080:8080 # Map the container port to the host port
+    environment:
+      - PORT=:8080
+      - LOG_LEVEL=DebugLevel
+      - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
+      - OTEL_SERVICE_NAME=pub-service
+      - OTEL_EXPORTER_OTLP_INSECURE=true
+      - OTEL_SERVICE_NAMESPACE=go-sandbox

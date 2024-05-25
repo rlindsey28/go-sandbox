@@ -8,6 +8,7 @@ import (
 	"go-sandbox/logger"
 	"go-sandbox/rolldice"
 	"go-sandbox/telemetry"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
 )
 
@@ -24,13 +26,16 @@ func main() {
 	defer stop()
 
 	// Load config
-	appconfig := config.Initialize()
-	log := logger.Get()
+	var conf config.AppConfig
+	if err := envconfig.Process(ctx, &conf); err != nil {
+		log.Panic("failed to process config", zap.Error(err))
+	}
+	zaplog := logger.Get()
 
 	// Setup otel
-	otelShutdown, err := telemetry.SetupOtelSDK(ctx, *appconfig)
+	otelShutdown, err := telemetry.SetupOtelSDK(ctx, conf)
 	if err != nil {
-		log.Panic("failed to setup otel", zap.Error(err))
+		zaplog.Panic("failed to setup otel", zap.Error(err))
 	}
 	// Handle otel shutdown
 	defer func() {
@@ -42,9 +47,9 @@ func main() {
 	health.RegisterRoutes(router)
 	rolldice.RegisterRoutes(router)
 
-	log.Debug("starting server", zap.String("service-name", appconfig.Service.Name), zap.String("port", appconfig.Service.Port))
+	zaplog.Debug("starting server", zap.String("service-name", conf.ServiceName), zap.String("port", conf.Port))
 	srv := &http.Server{
-		Addr:         appconfig.Service.Port,
+		Addr:         conf.Port,
 		BaseContext:  func(_ net.Listener) context.Context { return ctx },
 		ReadTimeout:  time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -59,11 +64,11 @@ func main() {
 	//Waite for shutdown signal
 	select {
 	case err := <-srvErr:
-		log.Error("server error", zap.Error(err))
+		zaplog.Error("server error", zap.Error(err))
 		return
 	case <-ctx.Done():
 		// Wait for CTRL+C
-		log.Info("shutting down server")
+		zaplog.Info("shutting down server")
 		stop()
 	}
 

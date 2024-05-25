@@ -77,7 +77,7 @@ func newTraceProvider(ctx context.Context, config config.AppConfig) (*trace.Trac
 		return nil, err
 	}
 	traceResource, err := resource.New(ctx,
-		resource.WithAttributes(semconv.ServiceNamespaceKey.String(config.Service.Name)),
+		resource.WithAttributes(semconv.ServiceNamespaceKey.String(config.ServiceName)),
 	)
 	if err != nil {
 		return nil, err

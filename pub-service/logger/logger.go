@@ -23,7 +23,7 @@ func Get() *zap.Logger {
 	once.Do(func() {
 		stdout := zapcore.AddSync(os.Stdout)
 
-		serviceLevel := zap.DebugLevel
+		serviceLevel := zap.InfoLevel
 		envLevel := os.Getenv("LOG_LEVEL")
 		if envLevel != "" {
 			levelFromEnv, err := zapcore.ParseLevel(envLevel)
