@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 )
@@ -60,6 +61,8 @@ func (h *Handler) rollDice(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(rdr)
 	if err != nil {
 		log.Error("failed to decode RollDiceRequest", zap.Error(err))
+		span.SetStatus(codes.Error, "failed to decode RollDiceRequest")
+		span.RecordError(err)
 		http.Error(w, "invalid input", http.StatusBadRequest)
 		return
 	}
@@ -67,6 +70,8 @@ func (h *Handler) rollDice(w http.ResponseWriter, r *http.Request) {
 	log.Debug("rolldice request", zap.Any("request", rdr))
 	distribution, err := roll(ctx, rdr.Sides, rdr.Rolls)
 	if err != nil {
+		span.SetStatus(codes.Error, "failed to roll dice")
+		span.RecordError(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -81,17 +86,29 @@ func (h *Handler) rollDice(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		log.Error("failed to encode RollDiceResponse", zap.Error(err))
+		span.SetStatus(codes.Error, "failed to encode RollDiceResponse")
+		span.RecordError(err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
+	span.SetStatus(codes.Ok, "success")
 }
 
 func roll(ctx context.Context, sides int8, rolls int8) (map[int8]int32, error) {
 	ctx, span := tracer.Start(ctx, "roll")
 	defer span.End()
 	log := logger.FromCtx(ctx)
+	if rolls < 1 || rolls > 100 {
+		err := fmt.Errorf("number of rolls must be >=1 and <=100")
+		log.Error("invalid input", zap.Error(err))
+		span.SetStatus(codes.Error, "number of rolls must be >=1 and <=100")
+		span.RecordError(err)
+		return nil, err
+	}
 	if sides < 2 || sides > 100 {
 		err := fmt.Errorf("number of sides must be >=2 and <=100")
 		log.Error("invalid input", zap.Error(err))
+		span.SetStatus(codes.Error, "number of sides must be >=2 and <=100")
+		span.RecordError(err)
 		return nil, err
 	}
 	distribution := make(map[int8]int32)
@@ -99,6 +116,6 @@ func roll(ctx context.Context, sides int8, rolls int8) (map[int8]int32, error) {
 		roll := int8(rand.Intn(int(sides)) + 1)
 		distribution[roll]++
 	}
-
+	span.SetStatus(codes.Ok, "success")
 	return distribution, nil
 }

@@ -6,12 +6,15 @@ services:
     ports:
       - 8080:8080 # Map the container port to the host port
     environment:
+      - HOST=locahost
       - PORT=:8080
-      - LOG_LEVEL=DebugLevel
+      - LOG_LEVEL=info
       - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4317
       - OTEL_SERVICE_NAME=pub-service
       - OTEL_EXPORTER_OTLP_INSECURE=true
       - OTEL_SERVICE_NAMESPACE=go-sandbox
+    depends_on:
+      - otel-collector
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.101.0
@@ -19,7 +22,15 @@ services:
     volumes:
       - ./config/otel-collector-config.yml:/etc/otel-collector-config.yml
     ports:
-      - "4317:4317" # OTLP over gRPC receiver
+      - 4317:4317
+    depends_on:
+      - jaeger
+      - prometheus
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    ports:
+      - 16686:16686
 
   prometheus:
     image: prom/prometheus:v2.52.0
@@ -27,8 +38,3 @@ services:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - 9090:9090
-
-  jaeger:
-    image: jaegertracing/all-in-one:1.57
-    ports:
-      - 16686:16686

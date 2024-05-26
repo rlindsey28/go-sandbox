@@ -3,17 +3,22 @@ package telemetry
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go-sandbox/config"
+	"go-sandbox/logger"
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // SetupOTelSDK bootstraps the OpenTelemetry pipeline.
@@ -42,8 +47,13 @@ func SetupOtelSDK(ctx context.Context, config config.AppConfig) (shutdown func(c
 	prop := newPropagator()
 	otel.SetTextMapPropagator(prop)
 
+	conn, err := initConn(config)
+	if err != nil {
+		handleErr(err)
+		return
+	}
 	// Set up trace provider.
-	tracerProvider, err := newTraceProvider(ctx, config)
+	tracerProvider, err := newTraceProvider(ctx, config, conn)
 	if err != nil {
 		handleErr(err)
 		return
@@ -70,23 +80,23 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTraceProvider(ctx context.Context, config config.AppConfig) (*trace.TracerProvider, error) {
-	traceExporter, err := stdouttrace.New(
-		stdouttrace.WithPrettyPrint())
+func newTraceProvider(ctx context.Context, config config.AppConfig, conn *grpc.ClientConn) (*trace.TracerProvider, error) {
+	log := logger.Get()
+	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
 	if err != nil {
+		log.Error("failed to create trace exporter", zap.Error(err))
 		return nil, err
 	}
 	traceResource, err := resource.New(ctx,
 		resource.WithAttributes(semconv.ServiceNamespaceKey.String(config.ServiceName)),
 	)
 	if err != nil {
+		log.Error("failed to create resource", zap.Error(err))
 		return nil, err
 	}
 	traceProvider := trace.NewTracerProvider(
 		trace.WithResource(traceResource),
-		trace.WithBatcher(traceExporter,
-			// Default is 5s. Set to 10s.
-			trace.WithBatchTimeout(time.Second*10)),
+		trace.WithBatcher(traceExporter, trace.WithBatchTimeout(time.Second*5)),
 	)
 	return traceProvider, nil
 }
@@ -102,4 +112,19 @@ func newMeterProvider() (*metric.MeterProvider, error) {
 			metric.WithInterval(time.Minute))),
 	)
 	return meterProvider, nil
+}
+
+// Initialize a gRPC connection to be used by both the tracer and meter
+// providers.
+func initConn(config config.AppConfig) (*grpc.ClientConn, error) {
+	// It connects the OpenTelemetry Collector through local gRPC connection.
+	conn, err := grpc.NewClient(config.Telemetry.ExporterEndpoint,
+		// Note the use of insecure transport here. TLS is recommended in production.
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC connection to collector: %w", err)
+	}
+
+	return conn, err
 }
