@@ -8,21 +8,26 @@ import (
 	"math/rand"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 )
 
-type Handler struct{}
+type Handler struct {
+	Metrics Metrics
+}
 
-type Request struct {
+type Metrics struct {
+	RollCount metric.Int64Counter
+}
+
+type RollDiceRequest struct {
 	Sides int8 `json:"sides"`
 	Rolls int8 `json:"rolls"`
 }
 
-type Response struct {
+type RollDiceResponse struct {
 	Rolls        int8           `json:"rolls"`
 	Sides        int8           `json:"sides"`
 	Distribution map[int8]int32 `json:"distribution"`
@@ -31,39 +36,35 @@ type Response struct {
 const name = "rolldice"
 
 var (
-	tracer  = otel.Tracer(name)
-	meter   = otel.Meter(name)
-	rollCnt metric.Int64Counter
+	tracer = otel.Tracer(name)
 )
 
-func init() {
+func (m *Metrics) InitMetrics() {
+	log := logger.Get()
+	meter := otel.Meter(name)
+
 	var err error
-	rollCnt, err = meter.Int64Counter("dice.rolls",
-		metric.WithDescription("The number of rolls by roll value"),
-		metric.WithUnit("{roll}"))
+	m.RollCount, err = meter.Int64Counter("dice.rolls",
+		metric.WithDescription("The number of API calls"),
+		metric.WithUnit("{call}"))
 	if err != nil {
-		panic(err)
+		log.Error("failed to create counter", zap.Error(err))
 	}
 }
 
-func RegisterRoutes(router *mux.Router) {
-	h := Handler{}
-
-	router.HandleFunc("/rolldice", h.rollDice).Methods("POST")
-}
-
-func (h *Handler) rollDice(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) RollDice(w http.ResponseWriter, r *http.Request) {
+	log := logger.Get()
 	ctx, span := tracer.Start(r.Context(), "rollDice")
 	defer span.End()
+	h.Metrics.RollCount.Add(ctx, 1)
 
-	log := logger.Get()
-	rdr := &Request{}
+	rdr := &RollDiceRequest{}
 	err := json.NewDecoder(r.Body).Decode(rdr)
 	if err != nil {
 		log.Error("failed to decode RollDiceRequest", zap.Error(err))
 		span.SetStatus(codes.Error, "failed to decode RollDiceRequest")
 		span.RecordError(err)
-		http.Error(w, "invalid input", http.StatusBadRequest)
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
@@ -72,11 +73,11 @@ func (h *Handler) rollDice(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.SetStatus(codes.Error, "failed to roll dice")
 		span.RecordError(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
-	resp := &Response{
+	resp := &RollDiceResponse{
 		Rolls:        rdr.Rolls,
 		Sides:        rdr.Sides,
 		Distribution: distribution,
@@ -90,7 +91,6 @@ func (h *Handler) rollDice(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 	}
-	span.SetStatus(codes.Ok, "success")
 }
 
 func roll(ctx context.Context, sides int8, rolls int8) (map[int8]int32, error) {

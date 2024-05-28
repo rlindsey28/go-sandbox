@@ -5,7 +5,6 @@ import (
 	"go-sandbox/logger"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 )
@@ -22,13 +21,7 @@ var (
 	tracer = otel.Tracer(name)
 )
 
-func RegisterRoutes(router *mux.Router) {
-	h := Handler{}
-
-	router.HandleFunc("/health", h.healthCheck).Methods("GET")
-}
-
-func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	_, span := tracer.Start(r.Context(), name)
 	defer span.End()
 

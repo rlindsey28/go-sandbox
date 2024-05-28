@@ -29,7 +29,7 @@ func TestRollDice(t *testing.T) {
 
 	handler.ServeHTTP(rr, req)
 
-	assert.Equal(t, http.StatusOK, rr.Code, "Response should be OK")
+	assert.Equal(t, http.StatusOK, rr.Code, "RollDiceResponse should be OK")
 
 	var response RollDiceResponse
 	err = json.Unmarshal(rr.Body.Bytes(), &response)

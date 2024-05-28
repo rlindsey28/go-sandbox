@@ -44,8 +44,15 @@ func main() {
 
 	// Setup router
 	router := mux.NewRouter()
-	health.RegisterRoutes(router)
-	rolldice.RegisterRoutes(router)
+
+	healthHandler := health.Handler{}
+	router.HandleFunc("/health", healthHandler.HealthCheck).Methods("GET")
+
+	rollHandler := rolldice.Handler{
+		Metrics: rolldice.Metrics{},
+	}
+	rollHandler.Metrics.InitMetrics()
+	router.HandleFunc("/rolldice", rollHandler.RollDice).Methods("POST")
 
 	zaplog.Debug("starting server", zap.String("service-name", conf.ServiceName), zap.String("port", conf.Port))
 	srv := &http.Server{
