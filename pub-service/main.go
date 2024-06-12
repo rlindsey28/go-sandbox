@@ -5,6 +5,7 @@ import (
 	"errors"
 	"go-sandbox/config"
 	"go-sandbox/health"
+	"go-sandbox/kafka"
 	"go-sandbox/logger"
 	"go-sandbox/rolldice"
 	"go-sandbox/telemetry"
@@ -15,6 +16,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/gorilla/mux"
 	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
@@ -32,15 +34,24 @@ func main() {
 	}
 	zaplog := logger.Get()
 
+	zaplog.Info("loaded config", zap.Any("config", conf))
 	// Setup otel
 	otelShutdown, err := telemetry.SetupOtelSDK(ctx, conf)
 	if err != nil {
 		zaplog.Panic("failed to setup otel", zap.Error(err))
 	}
-	// Handle otel shutdown
+
+	// Handle shutdown
 	defer func() {
 		err = errors.Join(err, otelShutdown(context.Background()))
 	}()
+
+	// Setup Kafka
+	producer, err := sarama.NewSyncProducer(conf.Kafka.Brokers, nil)
+	publisher := kafka.NewPublisher(conf.Kafka.Topic, producer)
+	if err != nil {
+		zaplog.Panic("failed to setup kafka", zap.Error(err))
+	}
 
 	// Setup router
 	router := mux.NewRouter()
@@ -49,7 +60,8 @@ func main() {
 	router.HandleFunc("/health", healthHandler.HealthCheck).Methods("GET")
 
 	rollHandler := rolldice.Handler{
-		Metrics: rolldice.Metrics{},
+		Metrics:   rolldice.Metrics{},
+		Publisher: publisher,
 	}
 	rollHandler.Metrics.InitMetrics()
 	router.HandleFunc("/rolldice", rollHandler.RollDice).Methods("POST")

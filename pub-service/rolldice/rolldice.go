@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go-sandbox/kafka"
 	"go-sandbox/logger"
 	"math/rand"
 	"net/http"
@@ -15,7 +16,8 @@ import (
 )
 
 type Handler struct {
-	Metrics Metrics
+	Metrics   Metrics
+	Publisher *kafka.Publisher
 }
 
 type Metrics struct {
@@ -82,7 +84,25 @@ func (h *Handler) RollDice(w http.ResponseWriter, r *http.Request) {
 		Sides:        rdr.Sides,
 		Distribution: distribution,
 	}
-	log.Debug("rolldice response", zap.Any("response", resp))
+	log.Info("rolldice response", zap.Any("response", resp))
+	encoder, err := json.Marshal(resp)
+	if err != nil {
+		log.Error("failed to encode RollDiceResponse", zap.Error(err))
+		span.SetStatus(codes.Error, "failed to encode RollDiceResponse")
+		span.RecordError(err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	err = h.Publisher.Publish(ctx, encoder)
+	if err != nil {
+		log.Error("failed to publish response to kafka", zap.Error(err))
+		span.SetStatus(codes.Error, "failed to publish response to kafka")
+		span.RecordError(err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(resp)
 	if err != nil {
