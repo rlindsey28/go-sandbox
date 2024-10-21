@@ -7,17 +7,17 @@ GOTEST_WITH_COVERAGE = $(GOTEST) -coverprofile=coverage.txt -covermode=atomic
 .PHONY: up
 up: ## Run containers and print logs in stdout
 	$(info Make: Starting containers...)
-	@TAG=$(TAG) docker-compose up --build
+	@TAG=$(TAG) docker compose up --build
 	@make -s logs
 
 .PHONY: down
 down: ## Stop containers
 	$(info Make: Stopping containers...)
-	@TAG=$(TAG) docker-compose down
+	@TAG=$(TAG) docker compose down
 
 .PHONY: logs
 logs: ## Print logs in stdout
-	@TAG=$(TAG) docker-compose logs
+	@TAG=$(TAG) docker compose logs
 
 .PHONY: test
 test: ## Run tests

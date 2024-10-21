@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-sandbox/config"
-	"go-sandbox/logger"
+	"pub-service/config"
+	"pub-service/logger"
 	"time"
 
 	"go.opentelemetry.io/otel"

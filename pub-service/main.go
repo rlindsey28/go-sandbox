@@ -3,20 +3,19 @@ package main
 import (
 	"context"
 	"errors"
-	"go-sandbox/config"
-	"go-sandbox/health"
-	"go-sandbox/kafka"
-	"go-sandbox/logger"
-	"go-sandbox/rolldice"
-	"go-sandbox/telemetry"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"pub-service/config"
+	"pub-service/health"
+	"pub-service/kafka"
+	"pub-service/logger"
+	"pub-service/rolldice"
+	"pub-service/telemetry"
 	"time"
 
-	"github.com/IBM/sarama"
 	"github.com/gorilla/mux"
 	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
@@ -47,8 +46,7 @@ func main() {
 	}()
 
 	// Setup Kafka
-	producer, err := sarama.NewSyncProducer(conf.Kafka.Brokers, nil)
-	publisher := kafka.NewPublisher(conf.Kafka.Topic, producer)
+	producer, err := kafka.NewProducer(conf.Kafka)
 	if err != nil {
 		zaplog.Panic("failed to setup kafka", zap.Error(err))
 	}
@@ -60,8 +58,9 @@ func main() {
 	router.HandleFunc("/health", healthHandler.HealthCheck).Methods("GET")
 
 	rollHandler := rolldice.Handler{
-		Metrics:   rolldice.Metrics{},
-		Publisher: publisher,
+		Metrics:  rolldice.Metrics{},
+		Producer: producer,
+		Topic:    conf.Kafka.Topic,
 	}
 	rollHandler.Metrics.InitMetrics()
 	router.HandleFunc("/rolldice", rollHandler.RollDice).Methods("POST")

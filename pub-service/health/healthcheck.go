@@ -2,8 +2,8 @@ package health
 
 import (
 	"encoding/json"
-	"go-sandbox/logger"
 	"net/http"
+	"pub-service/logger"
 
 	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"

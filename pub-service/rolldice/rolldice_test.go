@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"go-sandbox/logger"
 	"net/http"
 	"net/http/httptest"
+	"pub-service/logger"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,7 +31,7 @@ func TestRollDice(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rr.Code, "RollDiceResponse should be OK")
 
-	var response RollDiceResponse
+	var response Response
 	err = json.Unmarshal(rr.Body.Bytes(), &response)
 	if err != nil {
 		t.Fatal(err)
