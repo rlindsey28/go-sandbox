@@ -33,5 +33,6 @@ func NewProducer(config *config.KafkaConfig) (sarama.AsyncProducer, error) {
 		}
 	}()
 
+	log.Info("producer created", zap.Any("config", saramaConfig))
 	return producer, nil
 }

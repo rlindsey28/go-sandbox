@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
+	"go.opentelemetry.io/otel/trace"
 	"os"
 	"os/signal"
 	"strings"
@@ -16,6 +21,12 @@ import (
 
 	"github.com/IBM/sarama"
 	"go.uber.org/zap"
+)
+
+const name = "rolldice_consumer"
+
+var (
+	tracer = otel.Tracer(name)
 )
 
 func NewConsumer(conf *config.KafkaConfig) {
@@ -113,6 +124,7 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 				log.Info("message channel was closed")
 				return nil
 			}
+			createConsumerSpan(message)
 			log.Info("Message claimed", zap.Any("value", message.Value), zap.Time("timestamp", message.Timestamp))
 			session.MarkMessage(message, "")
 
@@ -131,4 +143,35 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 			return nil
 		}
 	}
+}
+
+func createConsumerSpan(msg *sarama.ConsumerMessage) trace.Span {
+
+	headers := propagation.MapCarrier{}
+
+	for _, recordHeader := range msg.Headers {
+		headers[string(recordHeader.Key)] = string(recordHeader.Value)
+	}
+
+	propagator := otel.GetTextMapPropagator()
+	ctx := propagator.Extract(context.Background(), headers)
+
+	_, span := tracer.Start(
+		ctx,
+		fmt.Sprintf("%s receive", msg.Topic),
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(
+			semconv.PeerService("kafka"),
+			semconv.NetworkTransportTCP,
+			semconv.MessagingSystemKafka,
+			semconv.MessagingDestinationName(msg.Topic),
+			semconv.MessagingKafkaMessageOffset(int(msg.Offset)),
+			semconv.MessagingMessageBodySize(len(msg.Value)),
+			semconv.MessagingOperationReceive,
+			semconv.MessagingKafkaDestinationPartition(int(msg.Partition)),
+		),
+	)
+	defer span.End()
+
+	return span
 }

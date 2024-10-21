@@ -41,7 +41,7 @@ type Response struct {
 	Distribution map[int8]int32 `json:"distribution"`
 }
 
-const name = "rolldice"
+const name = "rolldice_producer"
 
 var (
 	tracer = otel.Tracer(name)
@@ -157,7 +157,7 @@ func (h *Handler) publishRoll(ctx context.Context, roll json.RawMessage) {
 	select {
 	case h.Producer.Input() <- &msg:
 		log.Info("Message sent to Kafka", zap.Any("message", msg))
-		select {
+	/*	select {
 		case successMsg := <-h.Producer.Successes():
 			span.SetAttributes(
 				attribute.Bool("messaging.kafka.producer.success", true),
@@ -180,6 +180,8 @@ func (h *Handler) publishRoll(ctx context.Context, roll json.RawMessage) {
 			span.SetStatus(otelcodes.Error, "Context cancelled: "+ctx.Err().Error())
 			log.Warn("Context canceled before success message received.", zap.Error(ctx.Err()))
 		}
+
+	*/
 	case <-ctx.Done():
 		span.SetAttributes(
 			attribute.Bool("messaging.kafka.producer.success", false),

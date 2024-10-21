@@ -79,7 +79,7 @@ services:
       - otel-collector
 
   broker:
-    image: confluentinc/cp-kafka:7.6.1
+    image: confluentinc/cp-kafka:7.7.1
     hostname: broker
     container_name: broker
     ports:
@@ -101,15 +101,16 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
-      KAFKA_LOG4J_ROOT_LEVEL: 'WARN'
+      KAFKA_LOG4J_ROOT_LOGLEVEL: 'ERROR'
+      KAFKA_LOG4J_LOGGERS: 'kafka=ERROR,kafka.controller=ERROR,kafka.log.LogCleaner=ERROR,state.change.logger=ERROR,kafka.producer.async.DefaultEventHandler=ERROR'
       # Replace CLUSTER_ID with a unique base64 UUID using "bin/kafka-storage.sh random-uuid"
       # See https://docs.confluent.io/kafka/operations-tools/kafka-tools.html#kafka-storage-sh
-      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qg'
     volumes:
       - ~/data/kafka/kraft-combined-logs:/tmp/kraft-combined-logs
 
   schema-registry:
-    image: confluentinc/cp-schema-registry:7.6.1
+    image: confluentinc/cp-schema-registry:7.7.1
     hostname: schema-registry
     container_name: schema-registry
     depends_on:
@@ -120,7 +121,8 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:29092'
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-      SCHEMA_REGISTRY_LOG4J_ROOT_LEVEL: 'WARN'
+      SCHEMA_REGISTRY_LOG4J_ROOT_LEVEL: 'ERROR'
+      SCHEMA_REGISTRY_LOG4J_LOGGERS: 'io.confluent.rest-utils.requests=ERROR,org.apache.kafka.clients.NetworkClient=ERROR,org.apache.kafka.common.utils.AppInfoParser=ERROR'
 
   connect:
     image: cnfldemos/cp-server-connect-datagen:0.6.4-7.6.0
@@ -150,11 +152,11 @@ services:
       CONNECT_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
       CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
-      CONNECT_LOG4J_ROOT_LEVEL: 'WARN'
-      CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR
+      CONNECT_LOG4J_ROOT_LEVEL: 'ERROR'
+      CONNECT_LOG4J_LOGGERS: 'org.apache.kafka.clients.consumer.KafkaConsumer=ERROR,org.apache.kafka.clients.consumer.internals.SubscriptionState=ERROR,org.apache.kafka.connect.util.KafkaBasedLog=ERROR,org.apache.kafka.connect.storage.KafkaConfigBackingStore=ERROR,org.apache.kafka.clients.Metadata=ERROR,org.apache.kafka.connect.runtime.distributed.WorkerCoordinator=ERROR,org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR,org.apache.kafka.connect.runtime.rest.RestServer=ERROR,org.apache.kafka.connect.runtime.Connect=ERROR,org.eclipse.jetty.server.handler.ContextHandler=ERRORorg.hibernate.validator.internal.util.Version=ERROR,org.apache.kafka.connect.runtime.distributed.DistributedHerder=ERROR'
 
   control-center:
-    image: confluentinc/cp-enterprise-control-center:7.6.1
+    image: confluentinc/cp-enterprise-control-center:7.7.1
     hostname: control-center
     container_name: control-center
     depends_on:
@@ -174,12 +176,13 @@ services:
       CONTROL_CENTER_REPLICATION_FACTOR: 1
       CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
       CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
-      CONTROL_CENTER_LOG4J_ROOT_LEVEL: 'WARN'
+      CONTROL_CENTER_LOG4J_ROOT_LEVEL: 'ERROR'
+      CONTROL_CENTER_LOG4J_LOGGERS: 'io.confluent.controlcenter.application.AllControlCenter=ERROR,io.confluent.rest.Application=ERROR,io.confluent.kafkarest.config.SchemaRegistryConfig=ERROR,org.apache.kafka.streams.processor.internals.TaskManager=ERROR,org.apache.kafka.clients.consumer.internals.LegacyKafkaConsumer=ERROR,org.apache.kafka.streams.KafkaStreams=ERROR,org.apache.kafka.clients.producer.KafkaProducer=ERROR,org.apache.kafka.common.utils.AppInfoParser=ERROR,io.confluent.kafkarest.KafkaRestConfig=ERROR,io.confluent.controlcenter.util.StreamProgressReporter=ERROR,org.glassfish.jersey.internal.inject.Providers=ERROR,org.eclipse.jetty.server.handler.ContextHandler=ERROR,org.eclipse.jetty.server.AbstractConnector=ERROR,org.eclipse.jetty.server.Server=ERROR,io.confluent.controlcenter.license.LicenseModule=ERROR,io.confluent.rest.RestConfig=ERROR,io.confluent.controlcenter.rest.res.ConsumeToSocket=ERROR,io.confluent.rest-utils.requests=ERROR,org.apache.kafka.streams.processor.internals.StreamThread=ERROR'
       CONFLUENT_METRICS_TOPIC_REPLICATION: 1
       PORT: 9021
 
   ksqldb-server:
-    image: confluentinc/cp-ksqldb-server:7.6.1
+    image: confluentinc/cp-ksqldb-server:7.7.1
     hostname: ksqldb-server
     container_name: ksqldb-server
     depends_on:
@@ -200,10 +203,11 @@ services:
       KSQL_KSQL_LOGGING_PROCESSING_TOPIC_REPLICATION_FACTOR: 1
       KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: 'true'
       KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: 'true'
-      KSQL_LOG4J_ROOT_LEVEL: 'WARN'
+      KSQL_LOG4J_ROOT_LEVEL: 'ERROR'
+      KSQL_LOG4J_LOGGERS: 'io.confluent.ksql.utilization.PersistentQuerySaturationMetrics=ERROR,io.confluent.ksql.api.server.LoggingHandler=ERROR'
 
   ksqldb-cli:
-    image: confluentinc/cp-ksqldb-cli:7.6.1
+    image: confluentinc/cp-ksqldb-cli:7.7.1
     container_name: ksqldb-cli
     depends_on:
       - broker
@@ -213,7 +217,7 @@ services:
     tty: true
 
   ksql-datagen:
-    image: confluentinc/ksqldb-examples:7.6.1
+    image: confluentinc/ksqldb-examples:7.7.1
     hostname: ksql-datagen
     container_name: ksql-datagen
     depends_on:
@@ -235,7 +239,7 @@ services:
       STREAMS_SCHEMA_REGISTRY_PORT: 8081
 
   rest-proxy:
-    image: confluentinc/cp-kafka-rest:7.6.1
+    image: confluentinc/cp-kafka-rest:7.7.1
     depends_on:
       - broker
       - schema-registry
@@ -248,4 +252,4 @@ services:
       KAFKA_REST_BOOTSTRAP_SERVERS: 'broker:29092'
       KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
       KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
-      KAFKA_REST_LOG4J_ROOT_LEVEL: 'WARN'
+      KAFKA_REST_LOG4J_ROOT_LEVEL: 'ERROR'
